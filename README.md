@@ -1,24 +1,51 @@
 # SQL Server End-to-End Data Warehouse
 
-> A layered SQL Server data warehouse that brings CRM and ERP sales data together, standardizes it, and presents business-ready views for analytics.
+![SQL Server](https://img.shields.io/badge/Database-SQL%20Server-CC2927?logo=microsoftsqlserver&logoColor=white)
+![T-SQL](https://img.shields.io/badge/Language-T--SQL-blue)
+![Architecture](https://img.shields.io/badge/Architecture-Medallion-gold)
+![Status](https://img.shields.io/badge/Status-Portfolio%20Project-green)
 
-<!-- Before publishing: replace the bracketed items with facts from your repository. -->
+> A layered SQL Server data warehouse that integrates CRM and ERP sales data, cleans and standardizes it, and exposes business-ready views (star schema) for analytics and reporting.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Project Objectives](#project-objectives)
+- [Architecture](#architecture)
+- [Data Flow and Integration](#data-flow-and-integration)
+- [Gold Data Model](#gold-data-model)
+- [Data Quality Checks](#data-quality-checks)
+- [Technology Stack](#technology-stack)
+- [Repository Structure](#repository-structure)
+- [Setup and Run](#setup-and-run)
+- [Sample Analytics Queries](#sample-analytics-queries)
+- [Naming Conventions](#naming-conventions)
+- [Limitations](#limitations)
+- [Future Improvements](#future-improvements)
+- [What I Learned](#what-i-learned)
+- [Acknowledgments](#acknowledgments)
+- [Author](#author)
 
 ## Overview
 
-This project demonstrates an end-to-end data warehouse workflow using a Medallion-style architecture. CSV files from CRM and ERP source systems are loaded into a Bronze layer, prepared and integrated in Silver, then shaped into business-facing objects in Gold. The Gold layer described in the project material includes customer and product dimensions and a sales fact table.
+This project demonstrates an end-to-end data warehouse workflow using a **Medallion architecture**. CSV files from CRM and ERP source systems are loaded into a **Bronze** layer, cleaned and integrated in **Silver**, then shaped into business-facing objects in **Gold**.
 
-The project is intended to show how data integration connects operational source data to a consistent analytical model. The supplied materials describe the architecture and naming conventions; the exact repository layout, scripts, environment requirements, and personal adaptations still need to be filled in from the implementation.
+The Gold layer provides customer and product dimensions and a sales fact table, so analysts can query a single consistent model instead of joining raw operational tables.
+
+## Project Objectives
+
+- Consolidate sales data from two source systems (CRM and ERP) into one analytical model.
+- Resolve data quality issues: duplicates, nulls, inconsistent formats, and invalid dates.
+- Provide a clean star schema that is easy to use for BI tools and ad-hoc SQL.
+- Document the data catalog, lineage, and naming conventions clearly.
 
 ## Architecture
 
-The source architecture and flow diagrams supplied with the project were used as reference material. This README uses an original Mermaid diagram to summarize their documented flow.
-
 ```mermaid
 flowchart LR
-  CRM[CRM CSV files] --> B[Bronze tables\nraw source-shaped data]
+  CRM[CRM CSV files] --> B[Bronze<br/>raw source-shaped data]
   ERP[ERP CSV files] --> B
-  B --> S[Silver tables\ncleaned and standardized]
+  B --> S[Silver<br/>cleaned and standardized]
   S --> I[Integration and business rules]
   I --> G[Gold views]
   G --> F[fact_sales]
@@ -28,138 +55,170 @@ flowchart LR
   G --> SQL[Ad-hoc SQL analysis]
 ```
 
-### Medallion layers
+### Medallion Layers
 
-| Layer | Purpose | Documented objects and processing |
+| Layer | Purpose | Objects and processing |
 |---|---|---|
-| **Bronze** | Preserve source data in a traceable, raw form. | Tables that retain source names and data as-is; batch full loads using truncate and insert; no transformations. |
-| **Silver** | Prepare source data for analysis. | Tables retaining source-oriented names; documented transformations include cleansing, standardization, normalization, derived columns, and enrichment. Full load using truncate and insert. |
-| **Gold** | Present business-ready data for reporting and analytics. | Views; data integration, aggregations, and business logic; documented models include a star schema, flat tables, and aggregated tables. The supplied catalog names `dim_customers`, `dim_products`, and `fact_sales`. |
+| **Bronze** | Keep source data raw and traceable. | Tables with source names and data as-is. Batch full load (truncate and insert). No transformations. |
+| **Silver** | Prepare data for analysis. | Tables with source-oriented names. Cleansing, standardization, normalization, derived columns, and enrichment. Full load (truncate and insert). |
+| **Gold** | Business-ready data for reporting. | Views with data integration, aggregations, and business logic. Star schema: `dim_customers`, `dim_products`, `fact_sales`. |
 
-The layer descriptions above summarize the supplied architecture and data-layer documentation. Confirm that each listed transformation and object is present in the published implementation before treating it as a completed feature.
+## Data Flow and Integration
 
-## Data flow and integration
+Sources are CRM and ERP CSV files read from folders. Integration happens in the Gold layer, where sales, customer, and product information are combined into a star schema.
 
-The documented sources are CRM and ERP CSV files accessed from folders. The flow diagram shows source-shaped Bronze and Silver objects feeding Gold business objects. The Gold model combines sales, customer, and product information so analysis can use a sales fact with customer and product dimensions.
+### Data Lineage
 
-The data-layer notes describe integration as a Gold-layer activity, alongside aggregation and business rules. The precise join keys, transformation rules, load order, error handling, and validation checks are not specified in the supplied materials and should be documented from the SQL scripts.
-
-### Data lineage shown in the supplied flow
-
-| Source / layer | Objects shown |
+| Source | Bronze / Silver objects |
 |---|---|
-| CRM to Bronze | `crm_sales_details`, `crm_cust_info`, `crm_prd_info` |
-| ERP to Bronze | `erp_cust_az12`, `erp_loc_a101`, `erp_px_cat_g1v2` |
-| Bronze to Silver | Same source-oriented object names are shown across the layers. |
-| Silver to Gold | Inputs feed `fact_sales`, `dim_customers`, and `dim_products`. |
+| CRM | `crm_sales_details`, `crm_cust_info`, `crm_prd_info` |
+| ERP | `erp_cust_az12`, `erp_loc_a101`, `erp_px_cat_g1v2` |
+| Gold output | `fact_sales`, `dim_customers`, `dim_products` |
 
-Object names and lineage in this table are transcribed from the supplied flow diagram. Check them against the project code before publishing if the implementation differs.
+## Gold Data Model
 
-## Gold data model
-
-The supplied data catalog defines these Gold objects:
-
-| Object | Role | Documented contents |
+| Object | Role | Contents |
 |---|---|---|
-| `gold.dim_customers` | Customer dimension | Surrogate key, customer identifiers, names, country, marital status, gender, birthdate, and source creation date. |
-| `gold.dim_products` | Product dimension | Surrogate key, product identifiers and descriptive attributes, category hierarchy, maintenance flag, cost, product line, and start date. |
-| `gold.fact_sales` | Sales fact | Order number, customer and product surrogate keys, order/shipping/due dates, sales amount, quantity, and price. |
+| `gold.dim_customers` | Customer dimension | Surrogate key, customer identifiers, names, country, marital status, gender, birthdate, source creation date. |
+| `gold.dim_products` | Product dimension | Surrogate key, product identifiers and attributes, category hierarchy, maintenance flag, cost, product line, start date. |
+| `gold.fact_sales` | Sales fact | Order number, customer and product surrogate keys, order/shipping/due dates, sales amount, quantity, price. |
 
-The catalog is the source for these object and column descriptions. Confirm actual SQL data types, keys, grain, and constraints against the implementation. In particular, document the fact table grain (for example, what one row represents) only after verifying it in the SQL.
+**Relationships:** `fact_sales.customer_key → dim_customers.customer_key` and `fact_sales.product_key → dim_products.product_key`.
 
-## Technology stack
+> Fact table grain: one row per order line (verify against your SQL before publishing).
+
+## Data Quality Checks
+
+Typical checks applied during the Bronze → Silver step and validated before Gold:
+
+- Remove duplicate records (keep the latest record per business key).
+- Trim unwanted spaces in text fields.
+- Standardize coded values (e.g., gender, marital status, country names) into readable values.
+- Handle nulls and invalid or out-of-range dates.
+- Validate that `sales = quantity × price` and fix inconsistent values.
+- Check surrogate key uniqueness in dimensions and referential integrity between the fact and dimensions.
+
+## Technology Stack
 
 - **Database:** Microsoft SQL Server
-- **Query and transformation language:** T-SQL (confirm against repository scripts)
-- **Source format and interface:** CSV files in folders
-- **Modeling approach:** Medallion layers; Gold documentation describes a star schema as well as flat and aggregated objects
-- **Downstream use cases:** BI and reporting, ad-hoc SQL analysis; machine learning is shown as a possible consumer in the architecture reference
+- **Language:** T-SQL
+- **Source format:** CSV files
+- **Modeling:** Medallion architecture + star schema
+- **Consumers:** BI and reporting, ad-hoc SQL analysis
 
-<!-- Add exact SQL Server edition/version, client tools, orchestration, and BI tools only when verified. -->
-
-## Repository structure
-
-The repository tree was not included with the supplied documentation. Replace this section with the actual structure; do not publish this illustrative block as a verified tree.
+## Repository Structure
 
 ```text
-<repository-root>/
-├── <SQL scripts and/or database project>
-├── <source data or instructions for obtaining it>
-├── <documentation and diagrams>
+sql-data-warehouse-project/
+├── datasets/        # CRM and ERP source CSV files
+├── docs/            # Architecture, data flow, data catalog, naming conventions
+├── scripts/
+│   ├── init_database.sql
+│   ├── bronze/      # DDL + load_bronze procedure
+│   ├── silver/      # DDL + load_silver procedure
+│   └── gold/        # Views: dim_customers, dim_products, fact_sales
+├── tests/           # Data quality checks
 └── README.md
 ```
 
-## Setup and run
+> Adjust folder and file names to match your actual repository.
 
-Exact setup commands and script names were not supplied. Fill in the steps below from the repository and verify them on a clean SQL Server instance before publishing.
+## Setup and Run
 
-1. **Prerequisites:** [SQL Server edition/version, required tools, and permissions]
-2. **Get the project:** [repository URL or clone instructions]
-3. **Configure source files:** [expected folder paths and CSV filenames; do not commit credentials]
-4. **Create database and schemas:** [verified script or instructions]
-5. **Load Bronze:** [verified command/script and expected result]
-6. **Build Silver:** [verified command/script and expected result]
-7. **Create or refresh Gold:** [verified command/script and expected result]
-8. **Validate:** [documented checks and sample query]
+1. **Prerequisites:** SQL Server (Express or Developer) and SQL Server Management Studio (SSMS) or Azure Data Studio.
+2. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ahmedaliy01/sql-data-warehouse-project.git
+   ```
+3. **Configure source files:** place the CRM and ERP CSV files in a local folder and update the file paths inside the Bronze load script. Never commit credentials.
+4. **Create the database and schemas:** run `scripts/init_database.sql` (creates the `bronze`, `silver`, and `gold` schemas).
+5. **Load Bronze:**
+   ```sql
+   EXEC bronze.load_bronze;
+   ```
+6. **Build Silver:**
+   ```sql
+   EXEC silver.load_silver;
+   ```
+7. **Create Gold views:** run the scripts in `scripts/gold/`.
+8. **Validate:** run the quality checks in `tests/` and a sample query such as:
+   ```sql
+   SELECT COUNT(*) FROM gold.fact_sales;
+   ```
 
-> Do not run these steps until the bracketed instructions have been replaced with the actual project commands and paths.
+## Sample Analytics Queries
 
-## Naming conventions
+Examples you can run on the Gold layer (confirm column names against your views):
 
-Names use lowercase English `snake_case`, with underscores between words. Avoid SQL reserved words.
+```sql
+-- Total sales by country
+SELECT c.country, SUM(f.sales_amount) AS total_sales
+FROM gold.fact_sales f
+JOIN gold.dim_customers c ON f.customer_key = c.customer_key
+GROUP BY c.country
+ORDER BY total_sales DESC;
+
+-- Top 10 products by revenue
+SELECT TOP 10 p.product_name, SUM(f.sales_amount) AS revenue
+FROM gold.fact_sales f
+JOIN gold.dim_products p ON f.product_key = p.product_key
+GROUP BY p.product_name
+ORDER BY revenue DESC;
+
+-- Monthly sales trend
+SELECT FORMAT(f.order_date, 'yyyy-MM') AS order_month,
+       SUM(f.sales_amount) AS total_sales
+FROM gold.fact_sales f
+GROUP BY FORMAT(f.order_date, 'yyyy-MM')
+ORDER BY order_month;
+```
+
+## Naming Conventions
+
+Names use lowercase English `snake_case`. Avoid SQL reserved words.
 
 | Object | Convention | Example |
 |---|---|---|
-| Bronze table | `<source_system>_<source_entity>`; retain the source entity name. | `crm_customer_info` |
-| Silver table | `<source_system>_<source_entity>`; retain the source-oriented name. | `erp_loc_a101` |
+| Bronze / Silver table | `<source_system>_<source_entity>` | `crm_cust_info` |
 | Gold dimension | `dim_<business_entity>` | `dim_customers` |
 | Gold fact | `fact_<business_process>` | `fact_sales` |
 | Gold report object | `report_<subject>` | `report_sales_monthly` |
-| Dimension surrogate key | `<entity>_key` | `customer_key` |
+| Surrogate key | `<entity>_key` | `customer_key` |
 | Technical metadata column | `dwh_<purpose>` | `dwh_create_date` |
-| Layer load procedure | `load_<layer>` | `load_bronze`, `load_silver` |
+| Load procedure | `load_<layer>` | `load_bronze`, `load_silver` |
 
-The supplied architecture shows Gold views and says Gold has no load. The procedure naming document gives a general `load_<layer>` pattern; confirm whether a Gold procedure actually exists before listing one as part of this project.
+## Limitations
 
-## Screenshots and diagrams
+- Full loads only (truncate and insert); no incremental loading yet.
+- No orchestration or scheduling.
+- Performance tuning, indexing strategy, and access control are not covered.
 
-The supplied `data_architecture.png` and `data_flow.png` include Data with Baraa branding. They are treated as reference material and are not embedded here. The Mermaid diagram above is a fresh summary based on the documented architecture. Replace or supplement it with screenshots from your own SQL Server implementation, query results, or a diagram you created and have permission to share.
+## Future Improvements
 
-Suggested additions:
+- Add incremental loading and logging for each load run.
+- Schedule the pipeline (SQL Server Agent, Azure Data Factory, or similar).
+- Automate data quality tests and report results.
+- Build a Power BI dashboard on top of the Gold layer.
+- Add a project-owned architecture diagram and screenshots of query results.
 
-- Your own overview of the SQL Server database and schemas.
-- A query result showing the Gold objects and representative rows.
-- Your own data-flow or model diagram, checked against the implemented scripts.
+## What I Learned
 
-## Limitations and documentation gaps
+<!-- Write 3-4 short bullets in your own words, for example: -->
+- Designing a Medallion architecture and separating raw, cleaned, and business layers.
+- Writing T-SQL stored procedures for repeatable batch loads.
+- Integrating two source systems and building a star schema.
+- Finding and fixing data quality issues before analytics.
 
-- The supplied material does not include the repository tree, exact setup commands, SQL Server version, or orchestration details.
-- Join logic, load dependencies, failure handling, data quality checks, and the sales fact grain need confirmation from the implementation.
-- The data catalog gives business descriptions but should be checked against the actual schema and SQL types.
-- Incremental loading, security configuration, deployment, and performance results are not established by the supplied documents.
-- The project reference diagrams describe possible downstream consumers. Confirm which consumers were actually implemented.
+## Acknowledgments
 
-## Acknowledgments and attribution
+Built by following the SQL data warehouse tutorial by **Baraa (Data With Baraa)**. Architecture, data catalog, and naming conventions are based on his materials.
 
-The architecture, data-layer, data-flow, and naming-convention materials were supplied as documentation from Baraa's tutorial. This project README summarizes those materials as references. Add a link to the original tutorial and its author here: [tutorial / author link].
+- Tutorial: https://youtu.be/9GVqKuTVANE
+- Original repository: https://github.com/DataWithBaraa/sql-data-warehouse-project
 
-<!-- Add a short personal note here describing what you implemented, changed, or learned. -->
+## Author
 
-## Future improvements
+**Ahmed Ali Ahmed**
+Computer Engineering student, Pharos University in Alexandria | DEPI Microsoft Data Engineer track
 
-Ideas to consider, not claims about current project features:
-
-- Document verified setup and repeatable load instructions.
-- Add automated data quality checks and record their expected outcomes.
-- Define and document source-to-target mappings and Gold table grain.
-- Add incremental loading if it fits the source data and project requirements.
-- Add a project-owned architecture diagram and representative query examples.
-- Document deployment, access control, and operational monitoring.
-
-## Project ownership
-
-**Author:** [ُAhmed Ali]  
-**Tutorial/reference:** [https://youtu.be/9GVqKuTVANE?si=CD7F8udOJRQfLJoe]  
-**Repository:** [https://github.com/DataWithBaraa/sql-data-warehouse-project]
-
-<!-- Review all bracketed text and remove this note before publishing. -->
+- GitHub: [ahmedaliy01](https://github.com/ahmedaliy01)
