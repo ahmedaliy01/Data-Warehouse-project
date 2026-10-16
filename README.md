@@ -221,4 +221,5 @@ Built by following the SQL data warehouse tutorial by **Baraa (Data With Baraa)*
 **Ahmed Ali Ahmed**
 Computer Engineering student, Pharos University in Alexandria | DEPI Microsoft Data Engineer track
 
-- GitHub: [ahmedaliy01](https://github.com/ahmedaliy01)
+[![GitHub](https://img.shields.io/badge/GitHub-ahmedaliy01-181717?logo=github&logoColor=white)](https://github.com/ahmedaliy01)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-ahmedaliy-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ahmedaliy/)
